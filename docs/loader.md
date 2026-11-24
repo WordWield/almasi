@@ -28,6 +28,14 @@ Acquisition executes trusted Git code and installs dependencies. It is not a san
 
 Migrating from 0.1.x: reinstall the loader once, then use `from almasi import a` and `a.extend(...)` instead of `import almasi` and `almasi.extend(...)`. Architecture services belong to `a`. Since 0.2.1, the loader exposes only library names; its implementation classes are private. Applications use `a.services.Git` for checkout operations.
 
+Installer acquisition progress is emitted on stderr. The private `_Progress`
+context animates active operations on terminals and reports aligned completed
+operations (`Updated`, `Cloned`, `Dependencies installed`). Redirected logs
+receive only completed outcomes without ANSI escapes. Failed updates retain
+the existing local checkout and report `Using local version`; clone and
+installation failures propagate. The progress implementation uses only the
+Python standard library and does not import Core.
+
 ## Command line
 
 The installed command `almasi <library> [arguments ...]` is equivalent to `python -m almasi <library> [arguments ...]`. It acquires the selected library and delegates to its standalone Python entry script, preserving the current working directory, environment, terminal streams and exit status. CLI-capable libraries support direct execution as `__main__`.

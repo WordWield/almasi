@@ -18,7 +18,8 @@ import sys
 
 from threading import RLock
 
-from ._git import _Git
+from ._git      import _Git
+from ._progress import _Progress
 
 
 class _Libraries:
@@ -40,15 +41,14 @@ class _Libraries:
 		requirements = os.path.join(path, 'requirements.txt')
 
 		if os.path.isfile(requirements):
-			print(f'{qualified}: Installing dependencies', file=sys.stderr)
-
-			subprocess.run(
-				[sys.executable, '-m', 'pip', 'install', '-r', requirements],
-				cwd            = path,
-				capture_output = True,
-				text           = True,
-				check          = True
-			)
+			with _Progress(qualified, 'Installing dependencies', 'Dependencies installed'):
+				subprocess.run(
+					[sys.executable, '-m', 'pip', 'install', '-r', requirements],
+					cwd            = path,
+					capture_output = True,
+					text           = True,
+					check          = True
+				)
 
 	# Reuse a local checkout if an update is unavailable.
 	# ----------------------------------------------------------------------
@@ -59,12 +59,18 @@ class _Libraries:
 
 		if cls.is_cloned(name):
 			try:
-				if _Git.is_repository(path):
-					print(f'{qualified}: Checking for updates', file=sys.stderr)
-					_Git.pull(path, timeout=cls._PULL_TIMEOUT)
+				is_repository = _Git.is_repository(path)
 			except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as error:
 				details = getattr(error, 'stderr', None) or str(error)
-				print(f'⚠️ {qualified}: using local version ({str(details).strip()})', file=sys.stderr)
+				_Progress.warning(qualified, f'Using local version ({str(details).strip()})')
+			else:
+				if is_repository:
+					with _Progress(qualified, 'Updating', 'Updated') as progress:
+						try:
+							_Git.pull(path, timeout=cls._PULL_TIMEOUT)
+						except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as error:
+							details = getattr(error, 'stderr', None) or str(error)
+							progress.warn(f'Using local version ({str(details).strip()})')
 		else:
 			path = cls.clone(name)
 
@@ -154,9 +160,9 @@ class _Libraries:
 
 		with cls._lock:
 			if not cls.is_cloned(name):
-				print(f'almasi.{name}: Cloning library', file=sys.stderr)
-				os.makedirs(os.path.dirname(destination), exist_ok=True)
-				_Git.clone(cls.get_url(name), destination)
+				with _Progress(f'almasi.{name}', 'Cloning', 'Cloned'):
+					os.makedirs(os.path.dirname(destination), exist_ok=True)
+					_Git.clone(cls.get_url(name), destination)
 
 		return destination
 
