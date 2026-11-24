@@ -24,3 +24,7 @@ A repository named `almasi.<name>` provides `<name>.py` or `almasi/<name>.py` an
 Acquisition executes trusted Git code and installs dependencies. It is not a sandbox or a pinned release resolver. The current policy follows the checkout's upstream branch; use a local source tree for a fixed revision. Updates do not reload an already imported library. Cross-process checkout updates are not transactional.
 
 Migrating from 0.1.x: reinstall the loader once, then use `from almasi import a` and `a.extend(...)` instead of `import almasi` and `almasi.extend(...)`. Architecture services now belong to `a`; acquisition and Git operations belong to the loader.
+
+## Publishing
+
+The PyPI package is the loader only. Its release workflow builds and checks the distributions, then publishes with GitHub OIDC Trusted Publishing. Configure the PyPI Trusted Publisher for `WordWield/almasi`, workflow `publish.yml`, environment `pypi` before publishing a release. Core changes are delivered through Git without another PyPI release.
