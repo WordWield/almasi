@@ -76,9 +76,74 @@ It inherits the parent's capabilities and can introduce its own components. **Ex
 
 [Explore Almasi Core →](https://github.com/WordWield/almasi.a)
 
-## 2. What if your Python objects were already persistent?
+## 2. A dictionary that remembers
 
-In a fresh directory, create an empty `root/` folder and save this as `memory.py`:
+In a fresh directory, create an empty `root/` folder and save this as `counter.py`:
+
+```python
+from almasi import o
+
+counter = o.extend('counter')
+o.start(sync=True)
+
+if not hasattr(o.V, 'stats'):
+	o.V.stats = {'visits': 0}
+
+o.V.stats['visits'] += 1
+print(o.V.stats['visits'])
+```
+
+Run the same program three times:
+
+```text
+$ python counter.py
+1
+$ python counter.py
+2
+$ python counter.py
+3
+```
+
+An ordinary Python dictionary assigned to `o.V` becomes a persistent O dictionary. Its mutations survive process restarts. No serialization code, database queries or explicit save/load calls.
+
+## 3. Validation, identity and persistence — one model
+
+For typed objects, a single declaration is enough:
+
+```python
+Person = o.T.extend('Person', name=str, visits=int)
+```
+
+In an application with O started, this validates and converts field values both during construction and on assignment:
+
+```python
+person = Person(name='Ada', visits='1')
+assert person.visits == 1
+
+person.visits = '2'
+assert person.visits == 2
+
+person.visits = 'not a number'  # ValueError
+```
+
+Compare the equivalent basic field validation with assignment validation enabled in Pydantic v2:
+
+```python
+from pydantic import BaseModel, ConfigDict
+
+
+class Person(BaseModel):
+	model_config = ConfigDict(validate_assignment=True)
+
+	name: str
+	visits: int
+```
+
+O needs just one type declaration for this scenario. It also provides persistent identity, relationships and schema generation from the same definition. The comparison concerns basic field conversion and assignment validation, not the full range of Pydantic's validation features.
+
+### One person, multiple references, across restarts
+
+In another fresh directory, create an empty `root/` folder and save this as `memory.py`:
 
 ```python
 from almasi import o
@@ -113,7 +178,7 @@ Two paths through the object graph refer to the same persistent person. Change t
 
 **No save(). No load(). No ORM mapping.** Just Python objects, with persistent identity.
 
-The type you declared can also describe its own structure:
+The same type definition can also generate a JSON Schema:
 
 ```python
 print(Person.to_json_schema())
