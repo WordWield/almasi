@@ -1,6 +1,6 @@
 import sys
 
-from ._libraries import Libraries
+from ._libraries import _Libraries
 
 
 _USAGE = 'Usage: almasi <library> [arguments ...]'
@@ -14,8 +14,8 @@ def main():
 
 		if name in ('-h', '--help'):
 			print(_USAGE)
-		elif Libraries.is_valid_name(name):
-			Libraries.run(name, sys.argv[2:])
+		elif _Libraries.is_valid_name(name):
+			_Libraries.run(name, sys.argv[2:])
 		else:
 			raise SystemExit(f'Invalid library name: {name!r}')
 	else:

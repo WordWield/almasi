@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "almasi"
-version = "0.2.0"
-description = "On-demand delivery of independent Almasi libraries."
+version = "0.2.1"
+description = "Composable Python libraries, persistent objects and live shared state."
 readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.11"
@@ -15,7 +15,9 @@ dependencies = []
 almasi = "almasi.__main__:main"
 
 [project.urls]
+Homepage = "https://wordwield.ai"
 Source = "https://github.com/WordWield/almasi"
+LinkedIn = "https://www.linkedin.com/in/podgorny/"
 
 [tool.setuptools.packages.find]
 include = ["almasi*"]

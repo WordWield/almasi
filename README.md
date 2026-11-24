@@ -247,7 +247,7 @@ Notifications are asynchronous invalidation hints, can be coalesced, and are not
 
 ## 5. Object semantics, without giving up fast reads
 
-O is backed by LMDB. In a November 2026 local benchmark, reading a persistent list element took **1.09 µs**, compared with **1.59 µs** for an indexed SQLite row read — about 1.46× faster in that workload.
+O is backed by LMDB. In a November 21, 2026 local benchmark, reading a persistent list element took **1.09 µs**, compared with **1.59 µs** for an indexed SQLite row read — about 1.46× faster in that workload.
 
 | Operation | O (µs) | SQLite (µs) |
 | --- | ---: | ---: |
@@ -271,6 +271,8 @@ One small installation. Composable libraries. Persistent objects. Live shared st
 > **Complexity emerging from necessity, not accumulation.**
 
 **Discover more about Almasi and the vision behind it at [wordwield.ai](https://wordwield.ai).**
+
+Created by Alexander Podgorny. [Connect on LinkedIn](https://www.linkedin.com/in/podgorny/).
 
 Python 3.11+ · Apache-2.0 · Actively developed open-source software.
 

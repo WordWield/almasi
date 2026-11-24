@@ -19,7 +19,7 @@ import unittest
 from unittest.mock import patch
 
 import almasi
-from almasi import Libraries
+from almasi._libraries import _Libraries
 
 
 class TestLibraries(unittest.TestCase):
@@ -44,6 +44,14 @@ class TestLibraries(unittest.TestCase):
 	# ======================================================================
 	# PUBLIC METHODS
 	# ======================================================================
+
+	# Keep implementation names outside the public library namespace.
+	# ----------------------------------------------------------------------
+	def test_private_loader_namespace(self):
+		self.assertFalse([name for name in vars(almasi) if not name.startswith('_')])
+		self.assertFalse(hasattr(almasi, 'Git'))
+		self.assertFalse(hasattr(almasi, 'Libraries'))
+		self.assertEqual(_Libraries.__name__, '_Libraries')
 
 	# Load a library without acquiring Core or changing the loader identity.
 	# ----------------------------------------------------------------------
@@ -83,18 +91,18 @@ class TestLibraries(unittest.TestCase):
 
 			with patch.dict(os.environ, {'ALMASI_PATH': cache, 'ALMASI_GIT_BASE': home}):
 				with patch.dict(sys.modules):
-					library = Libraries.imp('example')
+					library = _Libraries.imp('example')
 					self.assertEqual(library.value, 1)
 
 					with open(entry, 'w') as stream:
 						stream.write('value = 200\n')
 
 					self._commit(origin)
-					self.assertIs(Libraries.imp('example'), library)
+					self.assertIs(_Libraries.imp('example'), library)
 					self.assertEqual(library.value, 1)
 
 				with patch.dict(sys.modules):
-					self.assertEqual(Libraries.imp('example').value, 200)
+					self.assertEqual(_Libraries.imp('example').value, 200)
 
 	# A failed entry must not leave an apparently imported library.
 	# ----------------------------------------------------------------------
@@ -108,7 +116,7 @@ class TestLibraries(unittest.TestCase):
 
 			with patch.dict(os.environ, {'ALMASI_PATH': home}):
 				with self.assertRaisesRegex(RuntimeError, 'broken'):
-					Libraries.imp('broken')
+					_Libraries.imp('broken')
 
 				self.assertNotIn('almasi.broken', sys.modules)
 
@@ -116,7 +124,7 @@ class TestLibraries(unittest.TestCase):
 	# ----------------------------------------------------------------------
 	def test_invalid_name(self):
 		with self.assertRaises(ValueError):
-			Libraries.imp('../outside')
+			_Libraries.imp('../outside')
 
 	# Exercise both installed CLI entry forms using a real Git checkout.
 	# ----------------------------------------------------------------------

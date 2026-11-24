@@ -18,10 +18,10 @@ import sys
 
 from threading import RLock
 
-from ._git import Git
+from ._git import _Git
 
 
-class Libraries:
+class _Libraries:
 
 	_DEFAULT_GIT_BASE = 'https://github.com/WordWield'
 	_DEFAULT_CACHE    = '~/.cache/almasi/libraries'
@@ -59,9 +59,9 @@ class Libraries:
 
 		if cls.is_cloned(name):
 			try:
-				if Git.is_repository(path):
+				if _Git.is_repository(path):
 					print(f'{qualified}: Checking for updates', file=sys.stderr)
-					Git.pull(path, timeout=cls._PULL_TIMEOUT)
+					_Git.pull(path, timeout=cls._PULL_TIMEOUT)
 			except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as error:
 				details = getattr(error, 'stderr', None) or str(error)
 				print(f'⚠️ {qualified}: using local version ({str(details).strip()})', file=sys.stderr)
@@ -156,7 +156,7 @@ class Libraries:
 			if not cls.is_cloned(name):
 				print(f'almasi.{name}: Cloning library', file=sys.stderr)
 				os.makedirs(os.path.dirname(destination), exist_ok=True)
-				Git.clone(cls.get_url(name), destination)
+				_Git.clone(cls.get_url(name), destination)
 
 		return destination
 

@@ -14,7 +14,7 @@ import os
 import subprocess
 
 
-class Git:
+class _Git:
 
 	# ======================================================================
 	# PRIVATE METHODS
