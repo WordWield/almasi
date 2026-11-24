@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=80"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "almasi"
+version = "0.2.0"
+description = "On-demand delivery of independent Almasi libraries."
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.urls]
+Source = "https://github.com/WordWield/almasi"
+
+[tool.setuptools.packages.find]
+include = ["almasi*"]
