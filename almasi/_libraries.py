@@ -72,15 +72,23 @@ class Libraries:
 
 		return path
 
+	# Resolve the common entry point for imports and standalone execution.
+	# ----------------------------------------------------------------------
+	@staticmethod
+	def _get_entry(name, path):
+		entry = os.path.join(path, name + '.py')
+
+		if not os.path.isfile(entry):
+			entry = os.path.join(path, 'almasi', name + '.py')
+
+		return entry
+
 	# Execute the entry once, allowing it to publish its own library object.
 	# ----------------------------------------------------------------------
 	@classmethod
 	def _load(cls, name, path):
 		qualified = f'almasi.{name}'
-		entry     = os.path.join(path, name + '.py')
-
-		if not os.path.isfile(entry):
-			entry = os.path.join(path, 'almasi', name + '.py')
+		entry     = cls._get_entry(name, path)
 
 		spec   = importlib.util.spec_from_file_location(qualified, entry, submodule_search_locations=[path])
 		module = importlib.util.module_from_spec(spec)
@@ -169,3 +177,13 @@ class Libraries:
 			raise ValueError(f'Invalid library name: {name!r}')
 
 		return library
+
+	# Replace the launcher with the acquired standalone Python entry.
+	# ----------------------------------------------------------------------
+	@classmethod
+	def run(cls, name: str, arguments: list[str]):
+		with cls._lock:
+			path  = cls._prepare(name)
+			entry = cls._get_entry(name, path)
+
+		os.execv(sys.executable, [sys.executable, entry, *arguments])

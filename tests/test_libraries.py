@@ -12,6 +12,7 @@
 import os
 import subprocess
 import sys
+import sysconfig
 import tempfile
 import unittest
 
@@ -116,3 +117,48 @@ class TestLibraries(unittest.TestCase):
 	def test_invalid_name(self):
 		with self.assertRaises(ValueError):
 			Libraries.imp('../outside')
+
+	# Exercise both installed CLI entry forms using a real Git checkout.
+	# ----------------------------------------------------------------------
+	def test_cli(self):
+		with tempfile.TemporaryDirectory() as home:
+			origin = os.path.join(home, 'almasi.example.git')
+			cache  = os.path.join(home, 'cache')
+			os.makedirs(origin)
+
+			subprocess.run(['git', 'init', '-q', origin], check=True)
+
+			with open(os.path.join(origin, 'example.py'), 'w') as stream:
+				stream.write('''import os
+import sys
+
+if __name__ == '__main__':
+	print(os.getcwd())
+	print(repr(sys.argv[1:]))
+	sys.exit(7)
+''')
+
+			self._commit(origin)
+
+			environment = dict(os.environ, ALMASI_PATH=cache, ALMASI_GIT_BASE=home)
+			commands    = [
+				[sys.executable, '-m', 'almasi'],
+				[os.path.join(sysconfig.get_path('scripts'), 'almasi')]
+			]
+
+			for command in commands:
+				with self.subTest(command=command):
+					process = subprocess.run(
+						[*command, 'example', 'demo', 'Word Wield', '--flag'],
+						cwd            = home,
+						env            = environment,
+						capture_output = True,
+						text           = True
+					)
+
+					self.assertEqual(process.returncode, 7, process.stderr)
+					self.assertEqual(process.stdout.splitlines(), [
+						os.path.realpath(home),
+						repr(['demo', 'Word Wield', '--flag'])
+					])
+					self.assertTrue(os.path.isdir(os.path.join(cache, 'almasi.example', '.git')))

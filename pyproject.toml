@@ -11,6 +11,9 @@ license = "Apache-2.0"
 requires-python = ">=3.11"
 dependencies = []
 
+[project.scripts]
+almasi = "almasi.__main__:main"
+
 [project.urls]
 Source = "https://github.com/WordWield/almasi"
 
