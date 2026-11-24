@@ -1,6 +1,6 @@
 # Almasi
 
-**Import a library that isn't installed. Extend an entire library, not just a class. Create Python objects that remember their state after your program exits.**
+**Import a library that isn't installed. Extend an entire library, not just a class. Create Python objects that survive restarts and react to changes in other processes.**
 
 Almasi is a different approach to building Python software: less wiring, fewer duplicate representations, more room to grow.
 
@@ -188,9 +188,85 @@ The same model can serve as application state, a schema and structured AI-facing
 
 [Explore Almasi O →](https://github.com/WordWield/almasi.o)
 
+## 4. Two processes. One living object graph.
+
+**Change a Python dictionary in one terminal. Watch the other terminal react.**
+
+In a fresh directory with an empty `root/` folder, save this as `live.py`:
+
+```python
+import sys
+
+from almasi import o
+
+live = o.extend('live')
+o.start(sync=True, multiprocess=True)
+
+if not hasattr(o.V, 'stats'):
+	o.V.stats = {'visits': 0}
+
+stats = o.V.stats
+
+if sys.argv[1] == 'watch':
+	cancel = o.services.Sync.subscribe(
+		{stats.id},
+		lambda ids: print(stats['visits'], flush=True)
+	)
+
+	try:
+		print(stats['visits'], flush=True)
+		input('Press Enter to stop.\n')
+	finally:
+		cancel()
+else:
+	stats['visits'] += 1
+	input('Press Enter after the watcher receives the update.\n')
+```
+
+In terminal A, run `python live.py watch` and wait for the initial value. In terminal B, from the same directory, run `python live.py write`.
+
+Terminal A:
+
+```text
+$ python live.py watch
+0
+Press Enter to stop.
+1
+2
+```
+
+The last two values appear after two separate runs of the writer. No polling. No external message broker. No manually synchronized cache. Even the watcher's existing `stats` reference sees the new committed state.
+
+O automatically invalidates affected cached entities before delivering remote notifications. Subscribe to specific object IDs or observe all changes. Both processes use the same persistent ontology, not two copies of the data.
+
+Local and cross-process notifications share the same subscription API. O starts its host-local notification transport automatically when requested.
+
+Notifications are asynchronous invalidation hints, can be coalesced, and are not a durable event log. The writer in this example stays alive until the watcher receives the notification. The processes share a database on one machine; this is not cross-host replication.
+
+[Subscriptions and synchronization →](https://github.com/WordWield/almasi.o/blob/master/docs/architecture.sync.md)
+
+## 5. Object semantics, without giving up fast reads
+
+O is backed by LMDB. In a November 2026 local benchmark, reading a persistent list element took **1.09 µs**, compared with **1.59 µs** for an indexed SQLite row read — about 1.46× faster in that workload.
+
+| Operation | O (µs) | SQLite (µs) |
+| --- | ---: | ---: |
+| Indexed list read | 1.089 | 1.593 |
+| Keyed dictionary read | 2.061 | 1.680 |
+| List element write | 59.191 | 5.952 |
+| Dictionary element write | 65.248 | 5.309 |
+
+In a separate November 24 CI benchmark, O's cached object-attribute reads measured **28 ns**. List and dictionary reads measured 0.619 µs and 1.295 µs respectively.
+
+Fast reads are only part of the story: O also maintains persistent types, object identity and references. Writes are currently substantially more expensive than SQLite's indexed row updates. O is designed for expressive persistent object graphs, not as a universally faster SQL replacement.
+
+The direct comparison used Python 3.11.14, SQLite 3.51.1, macOS arm64, 5,000 iterations, LMDB sync=False and SQLite WAL synchronous=OFF in autocommit mode, with one commit per write and fixture creation excluded. Neither configuration guarantees durability across power loss. The separate cached-read figures are from Python 3.12 on GitHub Actions Ubuntu, five rounds of 1,000 iterations; they are not a direct SQLite comparison.
+
+[Reproduce the SQLite comparison](https://github.com/WordWield/almasi.o/blob/master/root/tests/_test_performance_sqlite_compare.py) · [Published O performance results](https://github.com/WordWield/almasi.o/blob/master/docs/performance.txt)
+
 ## Start small. Grow naturally.
 
-One small installation. Composable libraries. Persistent objects. A foundation for applications, developer tools and intelligent systems that evolve without accumulating unnecessary machinery.
+One small installation. Composable libraries. Persistent objects. Live shared state. A foundation for applications, developer tools and intelligent systems that evolve without accumulating unnecessary machinery.
 
 > **Complexity emerging from necessity, not accumulation.**
 
