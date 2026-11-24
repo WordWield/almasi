@@ -270,6 +270,8 @@ One small installation. Composable libraries. Persistent objects. Live shared st
 
 > **Complexity emerging from necessity, not accumulation.**
 
+**Discover more about Almasi and the vision behind it at [wordwield.ai](https://wordwield.ai).**
+
 Python 3.11+ · Apache-2.0 · Actively developed open-source software.
 
 **A note on automatic updates:** Git and pip must be available. Libraries are acquired from trusted Git repositories and execute Python code in the active environment. Updates follow the upstream branch when fast-forwarding is possible; this is not a pinned dependency resolver or a sandbox. First acquisition requires access to the repository. See the [loader documentation](https://github.com/WordWield/almasi/blob/master/docs/loader.md) for configuration and update behavior.
