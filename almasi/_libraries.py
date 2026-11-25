@@ -9,14 +9,17 @@
 # Delegates: Git operations to Git, dependencies to pip and execution to Python.
 # ==============================================================================
 
+import hashlib
 import importlib.util
 import keyword
 import os
 import re
 import subprocess
 import sys
+import tempfile
 
-from threading import RLock
+from contextlib import suppress
+from threading  import RLock
 
 from ._git      import _Git
 from ._progress import _Progress
@@ -24,9 +27,10 @@ from ._progress import _Progress
 
 class _Libraries:
 
-	_DEFAULT_GIT_BASE = 'https://github.com/WordWield'
-	_DEFAULT_CACHE    = '~/.cache/almasi/libraries'
-	_PULL_TIMEOUT     = 15
+	_DEFAULT_GIT_BASE   = 'https://github.com/WordWield'
+	_DEFAULT_CACHE      = '~/.cache/almasi/libraries'
+	_PULL_TIMEOUT       = 15
+	_REQUIREMENTS_CACHE = '.almasi'
 
 	_lock = RLock()
 
@@ -34,22 +38,55 @@ class _Libraries:
 	# PRIVATE METHODS
 	# ======================================================================
 
-	# Install the declared dependencies into the active Python environment.
+	# Publish a successful installation record without exposing partial writes.
+	# ----------------------------------------------------------------------
+	@staticmethod
+	def _save_requirements_digest(record, digest):
+		directory = os.path.dirname(record)
+		os.makedirs(directory, exist_ok=True)
+
+		with tempfile.NamedTemporaryFile(dir=directory, delete=False) as stream:
+			try:
+				stream.write(digest)
+				stream.close()
+				os.replace(stream.name, record)
+			finally:
+				with suppress(FileNotFoundError):
+					os.unlink(stream.name)
+
+	# Install only when the current environment has no matching success record.
 	# ----------------------------------------------------------------------
 	@classmethod
 	def _install_requirements(cls, path, qualified):
 		requirements = os.path.join(path, 'requirements.txt')
 
 		if os.path.isfile(requirements):
-			with _Progress(qualified, 'Installing dependencies') as progress:
-				subprocess.run(
-					[sys.executable, '-m', 'pip', 'install', '-r', requirements],
-					cwd            = path,
-					capture_output = True,
-					text           = True,
-					check          = True
-				)
-				progress.update('Installed dependencies')
+			record = os.path.join(sys.prefix, cls._REQUIREMENTS_CACHE, qualified + '.sha256')
+
+			with open(requirements, 'rb') as stream:
+				digest = hashlib.file_digest(stream, 'sha256').hexdigest().encode('ascii')
+
+			try:
+				with open(record, 'rb') as stream:
+					installed = stream.read()
+			except FileNotFoundError:
+				installed = None
+
+			if installed != digest:
+				with suppress(FileNotFoundError):
+					os.unlink(record)
+
+				with _Progress(qualified, 'Installing dependencies') as progress:
+					subprocess.run(
+						[sys.executable, '-m', 'pip', 'install', '-r', requirements],
+						cwd            = path,
+						capture_output = True,
+						text           = True,
+						check          = True
+					)
+					progress.update('Installed dependencies')
+
+				cls._save_requirements_digest(record, digest)
 
 	# Reuse a local checkout if an update is unavailable.
 	# ----------------------------------------------------------------------
