@@ -9,6 +9,7 @@
 # Delegates: Repository operations to Git and Python identity to the loader.
 # ==============================================================================
 
+import hashlib
 import io
 import os
 import shutil
@@ -17,6 +18,7 @@ import sys
 import sysconfig
 import tempfile
 import unittest
+import venv
 
 from contextlib         import redirect_stderr
 from importlib.metadata import version
@@ -181,6 +183,106 @@ class TestLibraries(unittest.TestCase):
 	def test_invalid_name(self):
 		with self.assertRaises(ValueError):
 			_Libraries.imp('../outside')
+
+	# Reuse only a matching successful installation in the active environment.
+	# ----------------------------------------------------------------------
+	def test_requirements_digest(self):
+		with tempfile.TemporaryDirectory() as home:
+			path         = os.path.join(home, 'source')
+			environment  = os.path.join(home, 'venv')
+			requirements = os.path.join(path, 'requirements.txt')
+			record       = os.path.join(environment, '.almasi', 'almasi.example.sha256')
+			os.makedirs(path)
+
+			with patch.object(sys, 'prefix', environment), patch('almasi._libraries.subprocess.run') as install:
+				_Libraries._install_requirements(path, 'almasi.example')
+				install.assert_not_called()
+
+				with open(requirements, 'wb') as stream:
+					stream.write(b'pip\n')
+
+				_Libraries._install_requirements(path, 'almasi.example')
+				install.assert_called_once_with(
+					[sys.executable, '-m', 'pip', 'install', '-r', requirements],
+					cwd            = path,
+					capture_output = True,
+					text           = True,
+					check          = True
+				)
+
+				with open(record, 'rb') as stream:
+					self.assertEqual(stream.read(), hashlib.sha256(b'pip\n').hexdigest().encode('ascii'))
+
+				_Libraries._install_requirements(path, 'almasi.example')
+				self.assertEqual(install.call_count, 1)
+
+				with patch.object(sys, 'prefix', os.path.join(home, 'other')):
+					_Libraries._install_requirements(path, 'almasi.example')
+
+				self.assertEqual(install.call_count, 2)
+
+				_Libraries._install_requirements(path, 'almasi.other')
+				self.assertEqual(install.call_count, 3)
+
+				with open(requirements, 'wb') as stream:
+					stream.write(b'pip>=1\n')
+
+				install.side_effect = subprocess.CalledProcessError(1, ['pip'])
+
+				with self.assertRaises(subprocess.CalledProcessError):
+					_Libraries._install_requirements(path, 'almasi.example')
+
+				self.assertFalse(os.path.exists(record))
+				install.side_effect = None
+
+				_Libraries._install_requirements(path, 'almasi.example')
+				self.assertEqual(install.call_count, 5)
+
+				with open(record, 'rb') as stream:
+					self.assertEqual(stream.read(), hashlib.sha256(b'pip>=1\n').hexdigest().encode('ascii'))
+
+				os.unlink(record)
+				_Libraries._install_requirements(path, 'almasi.example')
+				self.assertEqual(install.call_count, 6)
+
+				self.assertEqual(sorted(os.listdir(os.path.dirname(record))), [
+					'almasi.example.sha256', 'almasi.other.sha256'
+				])
+
+	# Exercise actual pip in an isolated environment without network access.
+	# ----------------------------------------------------------------------
+	def test_requirements_installation(self):
+		with tempfile.TemporaryDirectory() as home:
+			environment  = os.path.join(home, 'venv')
+			requirements = os.path.join(home, 'requirements.txt')
+			record       = os.path.join(environment, '.almasi', 'almasi.example.sha256')
+
+			venv.EnvBuilder(with_pip=True).create(environment)
+			python = os.path.join(environment, 'bin', 'python')
+
+			with open(requirements, 'w') as stream:
+				stream.write('pip\n')
+
+			with patch.object(sys, 'prefix', environment), patch.object(sys, 'executable', python):
+				with patch.dict(os.environ, {'PIP_NO_INDEX': '1', 'PIP_DISABLE_PIP_VERSION_CHECK': '1'}):
+					output = io.StringIO()
+
+					with redirect_stderr(output):
+						_Libraries._install_requirements(home, 'almasi.example')
+						_Libraries._install_requirements(home, 'almasi.example')
+
+					self.assertEqual(output.getvalue().splitlines(), [
+						'✔ almasi.example:    Installed dependencies'
+					])
+					self.assertTrue(os.path.isfile(record))
+
+					with open(requirements, 'w') as stream:
+						stream.write('invalid requirement syntax\n')
+
+					with redirect_stderr(io.StringIO()), self.assertRaises(subprocess.CalledProcessError):
+						_Libraries._install_requirements(home, 'almasi.example')
+
+					self.assertFalse(os.path.exists(record))
 
 	# Exercise both installed CLI entry forms using a real Git checkout.
 	# ----------------------------------------------------------------------

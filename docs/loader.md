@@ -21,7 +21,7 @@ Only library names belong to the public `almasi` namespace. Internal classes are
 
 The loader owns acquisition and delegation to a library's Python entry point. Core architecture primitives live in [almasi.a](https://github.com/WordWield/almasi.a); every library follows the same acquisition contract.
 
-On first access in a process, a missing repository is cloned; an existing Git checkout is fast-forwarded when possible. Its requirements are installed in the active Python environment, and its entry point executes under `almasi.<name>`. Repeated imports reuse the same identity. A failed update uses the local checkout, but a failed initial clone, dependency installation or import is an error.
+On first access in a process, a missing repository is cloned; an existing Git checkout is fast-forwarded when possible. Its requirements are installed when their content has no matching successful installation record in the active Python environment, and its entry point executes under `almasi.<name>`. Repeated imports reuse the same identity. A failed update uses the local checkout, but a failed initial clone, dependency installation or import is an error.
 
 - `ALMASI_PATH`: checkout parent (default `~/.cache/almasi/libraries`).
 - `ALMASI_GIT_BASE`: trusted Git origin base (default `https://github.com/WordWield`).
@@ -34,6 +34,12 @@ A repository named `almasi.<name>` provides `<name>.py` or `almasi/<name>.py` an
 Acquisition executes trusted Git code and installs dependencies. It is not a sandbox or a pinned release resolver. The current policy follows the checkout's upstream branch; use a local source tree for a fixed revision. Updates do not reload an already imported library. Cross-process checkout updates are not transactional.
 
 Migrating from 0.1.x: reinstall the loader once, then use `from almasi import a` and `a.extend(...)` instead of `import almasi` and `almasi.extend(...)`. Architecture services belong to `a`. Since 0.2.1, the loader exposes only library names; its implementation classes are private. Applications use `a.services.Git` for checkout operations.
+
+## Dependency installation records
+
+Since 0.2.4, the loader hashes the actual bytes of each library's `requirements.txt` using SHA-256. After pip succeeds, it atomically records that digest in `<sys.prefix>/.almasi/almasi.<name>.sha256`. A matching record skips pip, including across new processes; a missing or different record runs pip. A failed installation leaves no successful record. The active Python environment must be writable. No additional package manager is required.
+
+The record tracks the top-level requirements file, not the installed package state. Manual package removal or replacement, changes to nested requirements or local dependency sources, and changes to pip configuration are not detected. Remove the corresponding `.sha256` file to force a dependency installation on the next acquisition. Removing `<sys.prefix>/.almasi/` resets all records for that environment. Separate environments have independent records; concurrent updates and installations are not transactional.
 
 ## Command line
 
