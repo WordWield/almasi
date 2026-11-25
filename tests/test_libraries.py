@@ -17,8 +17,9 @@ import sysconfig
 import tempfile
 import unittest
 
-from contextlib   import redirect_stderr
-from unittest.mock import patch
+from contextlib         import redirect_stderr
+from importlib.metadata import version
+from unittest.mock     import patch
 
 import almasi
 from almasi._libraries import _Libraries
@@ -73,6 +74,39 @@ class TestLibraries(unittest.TestCase):
 			'✔ almasi.a:          Checked',
 			'❌ almasi.web:        Installing'
 		])
+
+	# Preserve both captured subprocess streams when an operation fails.
+	# ----------------------------------------------------------------------
+	def test_progress_diagnostics(self):
+		output = io.StringIO()
+		error  = subprocess.CalledProcessError(1, ['fixture'], output='stdout detail', stderr='stderr detail')
+
+		with redirect_stderr(output), self.assertRaises(subprocess.CalledProcessError) as failure:
+			with _Progress('almasi.a', 'Installing dependencies'):
+				raise error
+
+		self.assertIs(failure.exception, error)
+		self.assertEqual(output.getvalue().splitlines()[1:], ['stdout detail', 'stderr detail'])
+
+	# Read installed metadata without acquiring a library or creating a cache.
+	# ----------------------------------------------------------------------
+	def test_version(self):
+		with tempfile.TemporaryDirectory() as home:
+			cache       = os.path.join(home, 'cache')
+			environment = dict(os.environ, ALMASI_PATH=cache, ALMASI_GIT_BASE=home)
+
+			for command in ([sys.executable, '-m', 'almasi'], [os.path.join(sysconfig.get_path('scripts'), 'almasi')]):
+				process = subprocess.run(
+					[*command, '--version'],
+					cwd            = home,
+					env            = environment,
+					capture_output = True,
+					text           = True
+				)
+				self.assertEqual(process.returncode, 0, process.stderr)
+				self.assertEqual(process.stdout.strip(), 'almasi ' + version('almasi'))
+				self.assertEqual(process.stderr, '')
+				self.assertFalse(os.path.exists(cache))
 
 	# Load a library without acquiring Core or changing the loader identity.
 	# ----------------------------------------------------------------------

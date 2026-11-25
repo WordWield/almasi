@@ -1,9 +1,10 @@
 import sys
+from importlib.metadata import version
 
 from ._libraries import _Libraries
 
 
-_USAGE = 'Usage: almasi <library> [arguments ...]'
+_USAGE = 'Usage: almasi <library> [arguments ...] | almasi --version'
 
 
 # Forward the remaining arguments unchanged to the selected library.
@@ -14,6 +15,8 @@ def main():
 
 		if name in ('-h', '--help'):
 			print(_USAGE)
+		elif name == '--version':
+			print('almasi', version('almasi'))
 		elif _Libraries.is_valid_name(name):
 			_Libraries.run(name, sys.argv[2:])
 		else:

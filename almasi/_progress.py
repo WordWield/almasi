@@ -9,6 +9,7 @@
 # Delegates: Terminal animation to yaspin; operation and error policy to callers.
 # ==============================================================================
 
+import subprocess
 import sys
 
 from yaspin import yaspin
@@ -50,6 +51,14 @@ class _Progress:
 			status = '\033[1;32m✔\033[0m'
 
 		print(f'{status} {self._format()}', file=self._stream, flush=True)
+
+		if isinstance(exc_value, (subprocess.CalledProcessError, subprocess.TimeoutExpired)):
+			for output in (exc_value.stdout, exc_value.stderr):
+				if output:
+					if isinstance(output, bytes):
+						output = output.decode('utf-8', errors='replace')
+
+					print(output.rstrip(), file=self._stream, flush=True)
 
 	# ======================================================================
 	# PRIVATE METHODS
