@@ -41,7 +41,7 @@ class _Libraries:
 		requirements = os.path.join(path, 'requirements.txt')
 
 		if os.path.isfile(requirements):
-			with _Progress(f'{qualified}: Installing dependencies') as progress:
+			with _Progress(qualified, 'Installing dependencies') as progress:
 				subprocess.run(
 					[sys.executable, '-m', 'pip', 'install', '-r', requirements],
 					cwd            = path,
@@ -49,7 +49,7 @@ class _Libraries:
 					text           = True,
 					check          = True
 				)
-				progress.update(f'{qualified}: Installed dependencies')
+				progress.update('Installed dependencies')
 
 	# Reuse a local checkout if an update is unavailable.
 	# ----------------------------------------------------------------------
@@ -61,9 +61,9 @@ class _Libraries:
 		if cls.is_cloned(name):
 			try:
 				if _Git.is_repository(path):
-					with _Progress(f'{qualified}: Checking for updates') as progress:
+					with _Progress(qualified, 'Checking for updates') as progress:
 						_Git.pull(path, timeout=cls._PULL_TIMEOUT)
-						progress.update(f'{qualified}: Checked for updates')
+						progress.update('Checked for updates')
 			except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as error:
 				details = getattr(error, 'stderr', None) or str(error)
 				print(f'⚠️ {qualified}: using local version ({str(details).strip()})', file=sys.stderr)
@@ -156,10 +156,10 @@ class _Libraries:
 
 		with cls._lock:
 			if not cls.is_cloned(name):
-				with _Progress(f'almasi.{name}: Cloning library') as progress:
+				with _Progress(f'almasi.{name}', 'Cloning library') as progress:
 					os.makedirs(os.path.dirname(destination), exist_ok=True)
 					_Git.clone(cls.get_url(name), destination)
-					progress.update(f'almasi.{name}: Cloned library')
+					progress.update('Cloned library')
 
 		return destination
 
