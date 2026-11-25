@@ -62,14 +62,17 @@ class TestLibraries(unittest.TestCase):
 		output = io.StringIO()
 
 		with redirect_stderr(output):
-			with _Progress('Checking') as progress:
+			with _Progress('almasi.a', 'Checking') as progress:
 				progress.update('Checked')
 
 			with self.assertRaisesRegex(RuntimeError, 'fixture'):
-				with _Progress('Installing'):
+				with _Progress('almasi.web', 'Installing'):
 					raise RuntimeError('fixture')
 
-		self.assertEqual(output.getvalue().splitlines(), ['✔ Checked', '❌ Installing'])
+		self.assertEqual(output.getvalue().splitlines(), [
+			'✔ almasi.a:          Checked',
+			'❌ almasi.web:        Installing'
+		])
 
 	# Load a library without acquiring Core or changing the loader identity.
 	# ----------------------------------------------------------------------
@@ -184,7 +187,7 @@ if __name__ == '__main__':
 
 					self.assertEqual(process.returncode, 7, process.stderr)
 					self.assertEqual(process.stderr.splitlines(), [
-						'✔ almasi.example: Cloned library' if index == 0 else '✔ almasi.example: Checked for updates'
+						'✔ almasi.example:    Cloned library' if index == 0 else '✔ almasi.example:    Checked for updates'
 					])
 					self.assertEqual(process.stdout.splitlines(), [
 						os.path.realpath(home),
