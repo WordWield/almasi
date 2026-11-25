@@ -44,8 +44,9 @@ def measure(method, directory, url, api, ref, expected):
 			actual = git('ls-remote', '--exit-code', url, ref).split()[0]
 		else:
 			request = urllib.request.Request(api, headers={
-				'User-Agent': 'Almasi-Benchmark',
-				'Accept':     'application/vnd.github.sha'
+				'User-Agent':    'Almasi-Benchmark',
+				'Accept':        'application/vnd.github.sha',
+				'Authorization': 'Bearer ' + os.environ['GITHUB_TOKEN']
 			})
 
 			with urllib.request.urlopen(request, timeout=_TIMEOUT) as response:
