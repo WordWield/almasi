@@ -10,9 +10,11 @@ pip install almasi
 from almasi import a, o
 ```
 
-Acquisition reports clone, update and dependency-installation outcomes on stderr.
-Interactive terminals show an active spinner; redirected streams receive only
-plain completion lines. Failed Git and pip commands also report captured
+Acquisition reports one progress line per library preparation on stderr.
+Interactive terminals update the active spinner in place during cloning,
+checking for updates and installing dependencies. Both interactive and redirected
+streams receive one final outcome (`Up to date`, a local-version warning or a failure).
+Subprocess diagnostics may add lines on errors. Failed Git and pip commands also report captured
 stdout and stderr before the original error propagates or the local checkout
 is reused. The private loader progress context has no dependency
 on Almasi Core.
