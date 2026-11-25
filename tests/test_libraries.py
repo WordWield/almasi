@@ -11,6 +11,7 @@
 
 import io
 import os
+import shutil
 import subprocess
 import sys
 import sysconfig
@@ -185,11 +186,22 @@ class TestLibraries(unittest.TestCase):
 	# ----------------------------------------------------------------------
 	def test_cli(self):
 		with tempfile.TemporaryDirectory() as home:
-			origin = os.path.join(home, 'almasi.example.git')
-			cache  = os.path.join(home, 'cache')
-			os.makedirs(origin)
+			origin     = os.path.join(home, 'almasi.example.git')
+			cli_origin = os.path.join(home, 'almasi.cli.git')
+			cache      = os.path.join(home, 'cache')
+			os.makedirs(os.path.join(origin, 'root'))
+			os.makedirs(cli_origin)
 
-			subprocess.run(['git', 'init', '-q', origin], check=True)
+			for repository in (origin, cli_origin):
+				subprocess.run(['git', 'init', '-q', repository], check=True)
+
+			shutil.copytree(
+				os.environ['ALMASI_CLI_SOURCE'],
+				cli_origin,
+				ignore        = shutil.ignore_patterns('.git'),
+				dirs_exist_ok = True
+			)
+			self._commit(cli_origin)
 
 			with open(os.path.join(origin, 'example.py'), 'w') as stream:
 				stream.write('''import os
@@ -201,6 +213,7 @@ if __name__ == '__main__':
 	sys.exit(7)
 ''')
 
+			shutil.copyfile(os.path.join(origin, 'example.py'), os.path.join(origin, 'root', 'test.py'))
 			self._commit(origin)
 
 			environment = dict(os.environ, ALMASI_PATH=cache, ALMASI_GIT_BASE=home)
@@ -212,7 +225,7 @@ if __name__ == '__main__':
 			for index, command in enumerate(commands):
 				with self.subTest(command=command):
 					process = subprocess.run(
-						[*command, 'example', 'demo', 'Word Wield', '--flag'],
+						[*command, 'run', 'example', 'demo', 'Word Wield', '--flag'],
 						cwd            = home,
 						env            = environment,
 						capture_output = True,
@@ -221,6 +234,7 @@ if __name__ == '__main__':
 
 					self.assertEqual(process.returncode, 7, process.stderr)
 					self.assertEqual(process.stderr.splitlines(), [
+						'✔ almasi.cli:        Cloned library' if index == 0 else '✔ almasi.cli:        Checked for updates',
 						'✔ almasi.example:    Cloned library' if index == 0 else '✔ almasi.example:    Checked for updates'
 					])
 					self.assertEqual(process.stdout.splitlines(), [
@@ -228,3 +242,46 @@ if __name__ == '__main__':
 						repr(['demo', 'Word Wield', '--flag'])
 					])
 					self.assertTrue(os.path.isdir(os.path.join(cache, 'almasi.example', '.git')))
+
+			process = subprocess.run(
+				[*commands[0], 'test', 'example', '--flag'],
+				cwd            = home,
+				env            = environment,
+				capture_output = True,
+				text           = True
+			)
+			self.assertEqual(process.returncode, 7, process.stderr)
+			self.assertEqual(process.stdout.splitlines(), [
+				os.path.realpath(os.path.join(cache, 'almasi.example')),
+				repr(['--flag'])
+			])
+
+			process = subprocess.run(
+				[*commands[0], '--help'],
+				cwd            = home,
+				env            = environment,
+				capture_output = True,
+				text           = True
+			)
+			self.assertEqual(process.returncode, 0, process.stderr)
+			self.assertIn('{run,test}', process.stdout)
+
+			process = subprocess.run(
+				[*commands[0], '_dispatch', 'example'],
+				cwd            = home,
+				env            = environment,
+				capture_output = True,
+				text           = True
+			)
+			self.assertEqual(process.returncode, 2)
+			self.assertIn('invalid choice', process.stderr)
+
+			process = subprocess.run(
+				[*commands[0], 'test', 'cli'],
+				cwd            = home,
+				env            = environment,
+				capture_output = True,
+				text           = True
+			)
+			self.assertEqual(process.returncode, 0, process.stderr)
+			self.assertIn('Ran 5 tests', process.stderr)

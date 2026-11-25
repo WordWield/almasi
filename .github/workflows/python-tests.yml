@@ -12,6 +12,11 @@ jobs:
         python-version: ['3.11', '3.12']
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: WordWield/almasi.cli
+          ref: f956d0fcf1e2d6bc0fe30774da7401b112a77a46
+          path: .ci/cli
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
@@ -22,6 +27,8 @@ jobs:
           python -m pip install dist/almasi-*.whl
           python -m pip check
       - name: Test installed loader outside its source tree
+        env:
+          ALMASI_CLI_SOURCE: ${{ github.workspace }}/.ci/cli
         run: |
           cd "$RUNNER_TEMP"
           python -m unittest discover -s "$GITHUB_WORKSPACE/tests"

@@ -18,10 +18,10 @@ from almasi import a, o
 
 That's all you need to acquire [Almasi Core](https://github.com/WordWield/almasi.a) and [Almasi O](https://github.com/WordWield/almasi.o). Missing libraries arrive on demand, their dependencies are installed automatically, and existing Git checkouts are checked for updates on first use in each new process. No separate installation commands for each library.
 
-For Hub-managed development, run `almasi hub <project> <owner>` from any directory
+For Hub-managed development, run `almasi run hub <project> <owner>` from any directory
 with the environment active. Hub creates and uses `~/almasi/<project>/` for the
 App, Sources and shared ontology. Git and an authenticated GitHub CLI (`gh`)
-are required for Hub repository acquisition. See the [Hub README](https://github.com/WordWield/almasi.hub) for setup and migration.
+are required for Hub repository acquisition. Run `almasi --help` for the live command interface and `almasi test <library>` to execute a library's tests. See the [Hub README](https://github.com/WordWield/almasi.hub) for setup and migration.
 
 ## 1. Your filesystem becomes your architecture
 

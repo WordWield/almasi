@@ -26,7 +26,7 @@ On first access in a process, a missing repository is cloned; an existing Git ch
 - `ALMASI_PATH`: checkout parent (default `~/.cache/almasi/libraries`).
 - `ALMASI_GIT_BASE`: trusted Git origin base (default `https://github.com/WordWield`).
 - Internal implementation `from almasi._libraries import _Libraries`: `get_path(name)`, `get_url(name)`, `is_cloned(name)`, `clone(name)`, `imp(name)`; names are public snake_case. `imp` returns the canonical published object.
-- `_Libraries.run(name, arguments)`: acquire the named library and replace the current process with its standalone Python entry point, forwarding the list of string arguments. This operation does not return on successful execution.
+- `_Libraries.run(name, arguments, entry=None, cwd=None)`: acquire the named library and replace the current process with its standalone Python entry point (or the trusted relative `entry` path), forwarding the list of string arguments. If `cwd` is supplied, change to that directory after acquisition and before execution; otherwise preserve the caller's directory. A missing script raises `FileNotFoundError`. This operation does not return on successful execution. This internal loader contract is used by the first-party `almasi.cli`, not by applications.
 - Internal implementation `from almasi._git import _Git`: `clone(url, directory, timeout=None)` returns the checkout path; `pull(directory, timeout=None)` performs a fast-forward update; `is_repository(directory)` checks a checkout root. Git failures retain their native exceptions.
 
 A repository named `almasi.<name>` provides `<name>.py` or `almasi/<name>.py` and optionally `requirements.txt`. Local directories without Git metadata are not updated. Libraries may publish their own runtime object in `sys.modules`.
@@ -40,7 +40,17 @@ Migrating from 0.1.x: reinstall the loader once, then use `from almasi import a`
 `almasi --version` prints the installed loader distribution version and exits
 without acquiring libraries or contacting Git.
 
-The installed command `almasi <library> [arguments ...]` is equivalent to `python -m almasi <library> [arguments ...]`. It acquires the selected library and delegates to its standalone Python entry script, preserving the current working directory, environment, terminal streams and exit status. CLI-capable libraries support direct execution as `__main__`. Hub resolves its own workspaces under `~/almasi/<project>/` independently of the caller's directory.
+Other invocations of `almasi` (or `python -m almasi`) acquire and execute the dynamically updated [almasi.cli](https://github.com/WordWield/almasi.cli), forwarding arguments unchanged. Its public class methods own command names, signatures and help; consult `almasi --help` for the current interface. The loader remains responsible for acquisition and process replacement. Hub resolves its own workspaces under `~/almasi/<project>/` independently of the caller's directory.
+
+Since 0.2.3, replace old direct library commands such as `almasi hub ...` with `almasi run hub ...`. No CLI download is attempted during pip installation or ordinary Python imports.
+
+## Testing
+
+The installed-loader test suite uses an actual CLI checkout as a local Git
+fixture. Set `ALMASI_CLI_SOURCE` to the absolute path of an `almasi.cli`
+checkout before running `python -m unittest discover -s tests` from the
+loader repository. CI supplies a pinned CLI revision and tests the installed
+wheel outside the loader checkout.
 
 ## Publishing
 
