@@ -44,6 +44,14 @@ Other invocations of `almasi` (or `python -m almasi`) acquire and execute the dy
 
 Since 0.2.3, replace old direct library commands such as `almasi hub ...` with `almasi run hub ...`. No CLI download is attempted during pip installation or ordinary Python imports.
 
+## Testing
+
+The installed-loader test suite uses an actual CLI checkout as a local Git
+fixture. Set `ALMASI_CLI_SOURCE` to the absolute path of an `almasi.cli`
+checkout before running `python -m unittest discover -s tests` from the
+loader repository. CI supplies a pinned CLI revision and tests the installed
+wheel outside the loader checkout.
+
 ## Publishing
 
 The PyPI package is the loader only. Its release workflow builds and checks the distributions, then publishes with GitHub OIDC Trusted Publishing. Configure the PyPI Trusted Publisher for `WordWield/almasi`, workflow `publish.yml`, environment `pypi` before publishing a release. Core changes are delivered through Git without another PyPI release.
