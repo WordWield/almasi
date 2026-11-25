@@ -10,6 +10,11 @@ pip install almasi
 from almasi import a, o
 ```
 
+Acquisition reports clone, update and dependency-installation outcomes on stderr.
+Interactive terminals show an active spinner; redirected streams receive only
+plain completion lines. The private loader progress context has no dependency
+on Almasi Core.
+
 Only library names belong to the public `almasi` namespace. Internal classes are not application APIs.
 
 The loader owns acquisition and delegation to a library's Python entry point. Core architecture primitives live in [almasi.a](https://github.com/WordWield/almasi.a); every library follows the same acquisition contract.
@@ -30,7 +35,7 @@ Migrating from 0.1.x: reinstall the loader once, then use `from almasi import a`
 
 ## Command line
 
-The installed command `almasi <library> [arguments ...]` is equivalent to `python -m almasi <library> [arguments ...]`. It acquires the selected library and delegates to its standalone Python entry script, preserving the current working directory, environment, terminal streams and exit status. CLI-capable libraries support direct execution as `__main__`.
+The installed command `almasi <library> [arguments ...]` is equivalent to `python -m almasi <library> [arguments ...]`. It acquires the selected library and delegates to its standalone Python entry script, preserving the current working directory, environment, terminal streams and exit status. CLI-capable libraries support direct execution as `__main__`. Hub resolves its own workspaces under `~/almasi/<project>/` independently of the caller's directory.
 
 ## Publishing
 
