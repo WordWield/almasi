@@ -24,6 +24,7 @@ jobs:
       - name: Measure update checks
         env:
           GIT_TERMINAL_PROMPT: '0'
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           git --version
           python --version
