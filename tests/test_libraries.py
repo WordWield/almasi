@@ -195,7 +195,12 @@ class TestLibraries(unittest.TestCase):
 			for repository in (origin, cli_origin):
 				subprocess.run(['git', 'init', '-q', repository], check=True)
 
-			shutil.copyfile(os.environ['ALMASI_CLI_SOURCE'], os.path.join(cli_origin, 'cli.py'))
+			shutil.copytree(
+				os.environ['ALMASI_CLI_SOURCE'],
+				cli_origin,
+				ignore        = shutil.ignore_patterns('.git'),
+				dirs_exist_ok = True
+			)
 			self._commit(cli_origin)
 
 			with open(os.path.join(origin, 'example.py'), 'w') as stream:
@@ -270,3 +275,13 @@ if __name__ == '__main__':
 			)
 			self.assertEqual(process.returncode, 2)
 			self.assertIn('invalid choice', process.stderr)
+
+			process = subprocess.run(
+				[*commands[0], 'test', 'cli'],
+				cwd            = home,
+				env            = environment,
+				capture_output = True,
+				text           = True
+			)
+			self.assertEqual(process.returncode, 0, process.stderr)
+			self.assertIn('Ran 5 tests', process.stderr)
