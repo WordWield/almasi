@@ -9,7 +9,7 @@ import time
 import urllib.request
 
 
-_REPOSITORIES = ('almasi.cli', 'almasi.hub', 'almasi.o')
+_REPOSITORIES = ('almasi.cli', 'almasi.a', 'almasi.o')
 _OWNER        = 'WordWield'
 _ROUNDS       = 9
 _TIMEOUT      = 15
