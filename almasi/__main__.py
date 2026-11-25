@@ -4,25 +4,13 @@ from importlib.metadata import version
 from ._libraries import _Libraries
 
 
-_USAGE = 'Usage: almasi <library> [arguments ...] | almasi --version'
-
-
-# Forward the remaining arguments unchanged to the selected library.
+# Keep the offline loader version local and delegate all other commands.
 # ----------------------------------------------------------------------
 def main():
-	if len(sys.argv) > 1:
-		name = sys.argv[1]
-
-		if name in ('-h', '--help'):
-			print(_USAGE)
-		elif name == '--version':
-			print('almasi', version('almasi'))
-		elif _Libraries.is_valid_name(name):
-			_Libraries.run(name, sys.argv[2:])
-		else:
-			raise SystemExit(f'Invalid library name: {name!r}')
+	if sys.argv[1:] == ['--version']:
+		print('almasi', version('almasi'))
 	else:
-		raise SystemExit(_USAGE)
+		_Libraries.run('cli', sys.argv[1:])
 
 
 if __name__ == '__main__':
