@@ -52,9 +52,12 @@ class _Progress:
 			status = '\033[1;32m✔\033[0m'
 
 		if exc_type is None and self._warning is not None:
-			self._text = self._warning
+			self._text = self._warning[0]
 
 		print(f'{status} {self._format()}', file=self._stream, flush=True)
+
+		if self._warning is not None:
+			self._report_error(self._warning[1])
 
 		self._report_error(exc_value)
 
@@ -93,12 +96,4 @@ class _Progress:
 	# Retain a recoverable warning instead of claiming the library is current.
 	# ----------------------------------------------------------------------
 	def warn(self, text: str, error: BaseException) -> None:
-		self._warning = text
-
-		if self._spinner is not None:
-			self._spinner.stop()
-
-		self._report_error(error)
-
-		if self._spinner is not None:
-			self._spinner.start()
+		self._warning = text, error
