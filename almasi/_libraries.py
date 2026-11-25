@@ -65,8 +65,7 @@ class _Libraries:
 						_Git.pull(path, timeout=cls._PULL_TIMEOUT)
 						progress.update('Checked for updates')
 			except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as error:
-				details = getattr(error, 'stderr', None) or str(error)
-				print(f'⚠️ {qualified}: using local version ({str(details).strip()})', file=sys.stderr)
+				print(f'⚠️ {qualified}: using local version ({error})', file=sys.stderr, flush=True)
 		else:
 			path = cls.clone(name)
 
