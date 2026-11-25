@@ -5,7 +5,7 @@
 # Present library acquisition progress before Core becomes available.
 #
 # RESPONSIBILITY BOUNDARIES:
-# Owns: Single-operation terminal and redirected-stream progress rendering.
+# Owns: Library-level terminal and redirected-stream progress rendering.
 # Delegates: Terminal animation to yaspin; operation and error policy to callers.
 # ==============================================================================
 
@@ -29,6 +29,7 @@ class _Progress:
 		self._stream  = sys.stderr
 		self._name    = name + ':'
 		self._text    = text
+		self._warning = None
 		self._spinner = yaspin(text=self._format(), stream=self._stream) if self._stream.isatty() else None
 
 	# Expose the operation's progress rather than its animation.
@@ -45,24 +46,35 @@ class _Progress:
 		if self._spinner is not None:
 			self._spinner.__exit__(exc_type, exc_value, traceback)
 
-		status = '✔' if exc_type is None else '❌'
+		status = ('⚠️' if self._warning is not None else '✔') if exc_type is None else '❌'
 
-		if exc_type is None and self._spinner is not None:
+		if exc_type is None and self._warning is None and self._spinner is not None:
 			status = '\033[1;32m✔\033[0m'
+
+		if exc_type is None and self._warning is not None:
+			self._text = self._warning[0]
 
 		print(f'{status} {self._format()}', file=self._stream, flush=True)
 
-		if isinstance(exc_value, (subprocess.CalledProcessError, subprocess.TimeoutExpired)):
-			for output in (exc_value.stdout, exc_value.stderr):
+		if self._warning is not None:
+			self._report_error(self._warning[1])
+
+		self._report_error(exc_value)
+
+	# ======================================================================
+	# PRIVATE METHODS
+	# ======================================================================
+
+	# Preserve subprocess diagnostics for failures and recoverable Git errors.
+	# ----------------------------------------------------------------------
+	def _report_error(self, error):
+		if isinstance(error, (subprocess.CalledProcessError, subprocess.TimeoutExpired)):
+			for output in (error.stdout, error.stderr):
 				if output:
 					if isinstance(output, bytes):
 						output = output.decode('utf-8', errors='replace')
 
 					print(output.rstrip(), file=self._stream, flush=True)
-
-	# ======================================================================
-	# PRIVATE METHODS
-	# ======================================================================
 
 	# Align operation descriptions without truncating long library names.
 	# ----------------------------------------------------------------------
@@ -80,3 +92,8 @@ class _Progress:
 
 		if self._spinner is not None:
 			self._spinner.text = self._format()
+
+	# Retain a recoverable warning instead of claiming the library is current.
+	# ----------------------------------------------------------------------
+	def warn(self, text: str, error: BaseException) -> None:
+		self._warning = text, error
