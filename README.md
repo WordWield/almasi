@@ -16,7 +16,7 @@ pip install almasi
 from almasi import a, o
 ```
 
-That's all you need to acquire [Almasi Core](https://github.com/WordWield/almasi.a) and [Almasi O](https://github.com/WordWield/almasi.o). Missing libraries arrive on demand, their dependencies are installed automatically, and existing Git checkouts are checked for updates on first use in each new process. No separate installation commands for each library.
+That's all you need to acquire [Almasi Core](https://github.com/WordWield/almasi.a) and [Almasi O](https://github.com/WordWield/almasi.o). Missing libraries arrive on demand, their dependencies are installed automatically when their requirements change or have no successful installation record in the active environment, and existing Git checkouts are checked for updates on first use in each new process. No separate installation commands for each library.
 
 For Hub-managed development, run `almasi run hub <project> <owner>` from any directory
 with the environment active. Hub creates and uses `~/almasi/<project>/` for the
@@ -285,6 +285,6 @@ Created by Alexander Podgorny. [Connect on LinkedIn](https://www.linkedin.com/in
 
 Python 3.11+ · Apache-2.0 · Actively developed open-source software.
 
-**A note on automatic updates:** Git and pip must be available. Libraries are acquired from trusted Git repositories and execute Python code in the active environment. Updates follow the upstream branch when fast-forwarding is possible; this is not a pinned dependency resolver or a sandbox. First acquisition requires access to the repository. See the [loader documentation](https://github.com/WordWield/almasi/blob/master/docs/loader.md) for configuration and update behavior.
+**A note on automatic updates:** Git and pip must be available. Libraries are acquired from trusted Git repositories and execute Python code in the active environment. Updates follow the upstream branch when fast-forwarding is possible; this is not a pinned dependency resolver or a sandbox. First acquisition requires access to the repository. See the [loader documentation](https://github.com/WordWield/almasi/blob/main/docs/loader.md) for configuration and update behavior.
 
 [Core source](https://github.com/WordWield/almasi.a) · [O source](https://github.com/WordWield/almasi.o) · [Almasi source](https://github.com/WordWield/almasi)
