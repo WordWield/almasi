@@ -87,7 +87,6 @@ class _Libraries:
 				cls._save_requirements_digest(record, digest)
 				progress.update('Installed dependencies')
 
-
 	# Clone into the selected checkout without owning progress presentation.
 	# ----------------------------------------------------------------------
 	@classmethod
