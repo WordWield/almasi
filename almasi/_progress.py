@@ -16,16 +16,19 @@ from yaspin import yaspin
 
 class _Progress:
 
+	_NAME_WIDTH = 18
+
 	# ======================================================================
 	# FRAMEWORK METHODS
 	# ======================================================================
 
 	# Keep redirected streams free of animation and terminal control codes.
 	# ----------------------------------------------------------------------
-	def __init__(self, text: str):
+	def __init__(self, name: str, text: str):
 		self._stream  = sys.stderr
+		self._name    = name + ':'
 		self._text    = text
-		self._spinner = yaspin(text=text, stream=self._stream) if self._stream.isatty() else None
+		self._spinner = yaspin(text=self._format(), stream=self._stream) if self._stream.isatty() else None
 
 	# Expose the operation's progress rather than its animation.
 	# ----------------------------------------------------------------------
@@ -46,7 +49,16 @@ class _Progress:
 		if exc_type is None and self._spinner is not None:
 			status = '\033[1;32m✔\033[0m'
 
-		print(f'{status} {self._text}', file=self._stream, flush=True)
+		print(f'{status} {self._format()}', file=self._stream, flush=True)
+
+	# ======================================================================
+	# PRIVATE METHODS
+	# ======================================================================
+
+	# Align operation descriptions without truncating long library names.
+	# ----------------------------------------------------------------------
+	def _format(self):
+		return f'{self._name:<{self._NAME_WIDTH}} {self._text}'
 
 	# ======================================================================
 	# PUBLIC METHODS
@@ -58,4 +70,4 @@ class _Progress:
 		self._text = text
 
 		if self._spinner is not None:
-			self._spinner.text = text
+			self._spinner.text = self._format()
