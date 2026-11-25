@@ -1,0 +1,30 @@
+name: Git update benchmark
+
+on:
+  push:
+    branches: [benchmark-git-update]
+    paths:
+      - '.github/workflows/benchmark-git-update.yml'
+      - 'benchmarks/git_update.py'
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Measure update checks
+        env:
+          GIT_TERMINAL_PROMPT: '0'
+        run: |
+          git --version
+          python --version
+          python benchmarks/git_update.py
