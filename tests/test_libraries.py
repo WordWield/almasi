@@ -22,7 +22,7 @@ import venv
 
 from contextlib         import redirect_stderr
 from importlib.metadata import version
-from unittest.mock     import patch
+from unittest.mock     import Mock, patch
 
 import almasi
 from almasi._libraries import _Libraries
@@ -90,6 +90,23 @@ class TestLibraries(unittest.TestCase):
 
 		self.assertIs(failure.exception, error)
 		self.assertEqual(output.getvalue().splitlines()[1:], ['stdout detail', 'stderr detail'])
+
+	# Keep a recovered Git failure visible despite later successful stages.
+	# ----------------------------------------------------------------------
+	def test_progress_warning(self):
+		output = io.StringIO()
+		error  = subprocess.CalledProcessError(1, ['git'], stderr='offline detail')
+
+		with redirect_stderr(output):
+			with _Progress('almasi.a', 'Checking for updates') as progress:
+				progress.warn('Using local version', error)
+				progress.update('Installing dependencies')
+				progress.update('Up to date')
+
+		self.assertEqual(output.getvalue().splitlines(), [
+			'⚠️ almasi.a:          Using local version',
+			'offline detail'
+		])
 
 	# Read installed metadata without acquiring a library or creating a cache.
 	# ----------------------------------------------------------------------
@@ -193,15 +210,16 @@ class TestLibraries(unittest.TestCase):
 			requirements = os.path.join(path, 'requirements.txt')
 			record       = os.path.join(environment, '.almasi', 'almasi.example.sha256')
 			os.makedirs(path)
+			progress = Mock()
 
 			with patch.object(sys, 'prefix', environment), patch('almasi._libraries.subprocess.run') as install:
-				_Libraries._install_requirements(path, 'almasi.example')
+				_Libraries._install_requirements(path, 'almasi.example', progress)
 				install.assert_not_called()
 
 				with open(requirements, 'wb') as stream:
 					stream.write(b'pip\n')
 
-				_Libraries._install_requirements(path, 'almasi.example')
+				_Libraries._install_requirements(path, 'almasi.example', progress)
 				install.assert_called_once_with(
 					[sys.executable, '-m', 'pip', 'install', '-r', requirements],
 					cwd            = path,
@@ -213,15 +231,15 @@ class TestLibraries(unittest.TestCase):
 				with open(record, 'rb') as stream:
 					self.assertEqual(stream.read(), hashlib.sha256(b'pip\n').hexdigest().encode('ascii'))
 
-				_Libraries._install_requirements(path, 'almasi.example')
+				_Libraries._install_requirements(path, 'almasi.example', progress)
 				self.assertEqual(install.call_count, 1)
 
 				with patch.object(sys, 'prefix', os.path.join(home, 'other')):
-					_Libraries._install_requirements(path, 'almasi.example')
+					_Libraries._install_requirements(path, 'almasi.example', progress)
 
 				self.assertEqual(install.call_count, 2)
 
-				_Libraries._install_requirements(path, 'almasi.other')
+				_Libraries._install_requirements(path, 'almasi.other', progress)
 				self.assertEqual(install.call_count, 3)
 
 				with open(requirements, 'wb') as stream:
@@ -230,19 +248,19 @@ class TestLibraries(unittest.TestCase):
 				install.side_effect = subprocess.CalledProcessError(1, ['pip'])
 
 				with self.assertRaises(subprocess.CalledProcessError):
-					_Libraries._install_requirements(path, 'almasi.example')
+					_Libraries._install_requirements(path, 'almasi.example', progress)
 
 				self.assertFalse(os.path.exists(record))
 				install.side_effect = None
 
-				_Libraries._install_requirements(path, 'almasi.example')
+				_Libraries._install_requirements(path, 'almasi.example', progress)
 				self.assertEqual(install.call_count, 5)
 
 				with open(record, 'rb') as stream:
 					self.assertEqual(stream.read(), hashlib.sha256(b'pip>=1\n').hexdigest().encode('ascii'))
 
 				os.unlink(record)
-				_Libraries._install_requirements(path, 'almasi.example')
+				_Libraries._install_requirements(path, 'almasi.example', progress)
 				self.assertEqual(install.call_count, 6)
 
 				self.assertEqual(sorted(os.listdir(os.path.dirname(record))), [
@@ -254,9 +272,11 @@ class TestLibraries(unittest.TestCase):
 	def test_requirements_installation(self):
 		with tempfile.TemporaryDirectory() as home:
 			environment  = os.path.join(home, 'venv')
-			requirements = os.path.join(home, 'requirements.txt')
+			path         = os.path.join(home, 'almasi.example')
+			requirements = os.path.join(path, 'requirements.txt')
 			record       = os.path.join(environment, '.almasi', 'almasi.example.sha256')
 
+			os.makedirs(path)
 			venv.EnvBuilder(with_pip=True).create(environment)
 			python = os.path.join(environment, 'bin', 'python')
 
@@ -264,15 +284,16 @@ class TestLibraries(unittest.TestCase):
 				stream.write('pip\n')
 
 			with patch.object(sys, 'prefix', environment), patch.object(sys, 'executable', python):
-				with patch.dict(os.environ, {'PIP_NO_INDEX': '1', 'PIP_DISABLE_PIP_VERSION_CHECK': '1'}):
+				with patch.dict(os.environ, {'ALMASI_PATH': home, 'PIP_NO_INDEX': '1', 'PIP_DISABLE_PIP_VERSION_CHECK': '1'}):
 					output = io.StringIO()
 
 					with redirect_stderr(output):
-						_Libraries._install_requirements(home, 'almasi.example')
-						_Libraries._install_requirements(home, 'almasi.example')
+						_Libraries._prepare('example')
+						_Libraries._prepare('example')
 
 					self.assertEqual(output.getvalue().splitlines(), [
-						'✔ almasi.example:    Installed dependencies'
+						'✔ almasi.example:    Up to date',
+						'✔ almasi.example:    Up to date'
 					])
 					self.assertTrue(os.path.isfile(record))
 
@@ -280,7 +301,7 @@ class TestLibraries(unittest.TestCase):
 						stream.write('invalid requirement syntax\n')
 
 					with redirect_stderr(io.StringIO()), self.assertRaises(subprocess.CalledProcessError):
-						_Libraries._install_requirements(home, 'almasi.example')
+						_Libraries._prepare('example')
 
 					self.assertFalse(os.path.exists(record))
 
@@ -324,7 +345,7 @@ if __name__ == '__main__':
 				[os.path.join(sysconfig.get_path('scripts'), 'almasi')]
 			]
 
-			for index, command in enumerate(commands):
+			for command in commands:
 				with self.subTest(command=command):
 					process = subprocess.run(
 						[*command, 'run', 'example', 'demo', 'Word Wield', '--flag'],
@@ -336,8 +357,8 @@ if __name__ == '__main__':
 
 					self.assertEqual(process.returncode, 7, process.stderr)
 					self.assertEqual(process.stderr.splitlines(), [
-						'✔ almasi.cli:        Cloned library' if index == 0 else '✔ almasi.cli:        Checked for updates',
-						'✔ almasi.example:    Cloned library' if index == 0 else '✔ almasi.example:    Checked for updates'
+						'✔ almasi.cli:        Up to date',
+						'✔ almasi.example:    Up to date'
 					])
 					self.assertEqual(process.stdout.splitlines(), [
 						os.path.realpath(home),
