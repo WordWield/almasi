@@ -180,12 +180,24 @@ class _Libraries:
 
 		return library
 
-	# Replace the launcher with the acquired standalone Python entry.
+	# Replace the launcher with an acquired library entry.
 	# ----------------------------------------------------------------------
 	@classmethod
-	def run(cls, name: str, arguments: list[str]):
+	def run(
+		cls,
+		name      : str,
+		arguments : list[str],
+		entry     : str | None = None,
+		cwd       : str | None = None
+	):
 		with cls._lock:
-			path  = cls._prepare(name)
-			entry = cls._get_entry(name, path)
+			path   = cls._prepare(name)
+			script = cls._get_entry(name, path) if entry is None else os.path.join(path, entry)
 
-		os.execv(sys.executable, [sys.executable, entry, *arguments])
+		if os.path.isfile(script):
+			if cwd is not None:
+				os.chdir(cwd)
+
+			os.execv(sys.executable, [sys.executable, script, *arguments])
+		else:
+			raise FileNotFoundError(f'Library {name!r} has no entry at {script}')
