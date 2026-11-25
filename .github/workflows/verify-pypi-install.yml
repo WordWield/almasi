@@ -1,0 +1,45 @@
+name: Published package smoke test
+
+on:
+  push:
+    branches: [verify-pypi-install]
+    paths:
+      - '.github/workflows/verify-pypi-install.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install published package as a new user
+        shell: bash
+        run: |
+          cd "$(mktemp -d)"
+          export HOME="$PWD/home"
+          mkdir -p "$HOME"
+          unset ALMASI_PATH ALMASI_GIT_BASE PYTHONPATH
+          export GIT_TERMINAL_PROMPT=0
+          python -m venv venv
+          source venv/bin/activate
+          python -m pip install --no-cache-dir --index-url https://pypi.org/simple almasi==0.2.4
+          command -v almasi
+          test "$(command -v almasi)" = "$VIRTUAL_ENV/bin/almasi"
+          test "$(almasi --version)" = 'almasi 0.2.4'
+          almasi --help
+          almasi test cli
+          python -c 'from almasi import a, o; print("Core and O imported successfully")'
+          ls -l "$VIRTUAL_ENV/.almasi"
+          python -c 'from almasi import a, o; print("Core and O imported again")' 2> second.log
+          cat second.log
+          ! grep -q 'Installing dependencies\|Installed dependencies' second.log
+          python -m pip check
