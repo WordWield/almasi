@@ -9,6 +9,7 @@
 # Delegates: Repository operations to Git and Python identity to the loader.
 # ==============================================================================
 
+import io
 import os
 import subprocess
 import sys
@@ -16,10 +17,12 @@ import sysconfig
 import tempfile
 import unittest
 
+from contextlib   import redirect_stderr
 from unittest.mock import patch
 
 import almasi
 from almasi._libraries import _Libraries
+from almasi._progress  import _Progress
 
 
 class TestLibraries(unittest.TestCase):
@@ -52,6 +55,21 @@ class TestLibraries(unittest.TestCase):
 		self.assertFalse(hasattr(almasi, 'Git'))
 		self.assertFalse(hasattr(almasi, 'Libraries'))
 		self.assertEqual(_Libraries.__name__, '_Libraries')
+
+	# Captured progress emits one plain outcome and preserves failures.
+	# ----------------------------------------------------------------------
+	def test_progress(self):
+		output = io.StringIO()
+
+		with redirect_stderr(output):
+			with _Progress('Checking') as progress:
+				progress.update('Checked')
+
+			with self.assertRaisesRegex(RuntimeError, 'fixture'):
+				with _Progress('Installing'):
+					raise RuntimeError('fixture')
+
+		self.assertEqual(output.getvalue().splitlines(), ['✔ Checked', '❌ Installing'])
 
 	# Load a library without acquiring Core or changing the loader identity.
 	# ----------------------------------------------------------------------
@@ -154,7 +172,7 @@ if __name__ == '__main__':
 				[os.path.join(sysconfig.get_path('scripts'), 'almasi')]
 			]
 
-			for command in commands:
+			for index, command in enumerate(commands):
 				with self.subTest(command=command):
 					process = subprocess.run(
 						[*command, 'example', 'demo', 'Word Wield', '--flag'],
@@ -165,6 +183,9 @@ if __name__ == '__main__':
 					)
 
 					self.assertEqual(process.returncode, 7, process.stderr)
+					self.assertEqual(process.stderr.splitlines(), [
+						'✔ almasi.example: Cloned library' if index == 0 else '✔ almasi.example: Checked for updates'
+					])
 					self.assertEqual(process.stdout.splitlines(), [
 						os.path.realpath(home),
 						repr(['demo', 'Word Wield', '--flag'])
