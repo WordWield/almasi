@@ -4,7 +4,11 @@
 
 Almasi is a different approach to building Python software: less wiring, fewer duplicate representations, more room to grow.
 
+Create and activate a dedicated Python 3.11+ environment:
+
 ```bash
+python3 -m venv ~/vnv/almasi
+source ~/vnv/almasi/bin/activate
 pip install almasi
 ```
 
@@ -13,6 +17,11 @@ from almasi import a, o
 ```
 
 That's all you need to acquire [Almasi Core](https://github.com/WordWield/almasi.a) and [Almasi O](https://github.com/WordWield/almasi.o). Missing libraries arrive on demand, their dependencies are installed automatically, and existing Git checkouts are checked for updates on first use in each new process. No separate installation commands for each library.
+
+For Hub-managed development, run `almasi hub <project> <owner>` from any directory
+with the environment active. Hub creates and uses `~/almasi/<project>/` for the
+App, Sources and shared ontology. Git and an authenticated GitHub CLI (`gh`)
+are required for Hub repository acquisition. See the [Hub README](https://github.com/WordWield/almasi.hub) for setup and migration.
 
 ## 1. Your filesystem becomes your architecture
 

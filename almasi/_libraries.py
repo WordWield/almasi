@@ -18,7 +18,8 @@ import sys
 
 from threading import RLock
 
-from ._git import _Git
+from ._git      import _Git
+from ._progress import _Progress
 
 
 class _Libraries:
@@ -40,15 +41,15 @@ class _Libraries:
 		requirements = os.path.join(path, 'requirements.txt')
 
 		if os.path.isfile(requirements):
-			print(f'{qualified}: Installing dependencies', file=sys.stderr)
-
-			subprocess.run(
-				[sys.executable, '-m', 'pip', 'install', '-r', requirements],
-				cwd            = path,
-				capture_output = True,
-				text           = True,
-				check          = True
-			)
+			with _Progress(qualified, 'Installing dependencies') as progress:
+				subprocess.run(
+					[sys.executable, '-m', 'pip', 'install', '-r', requirements],
+					cwd            = path,
+					capture_output = True,
+					text           = True,
+					check          = True
+				)
+				progress.update('Installed dependencies')
 
 	# Reuse a local checkout if an update is unavailable.
 	# ----------------------------------------------------------------------
@@ -60,8 +61,9 @@ class _Libraries:
 		if cls.is_cloned(name):
 			try:
 				if _Git.is_repository(path):
-					print(f'{qualified}: Checking for updates', file=sys.stderr)
-					_Git.pull(path, timeout=cls._PULL_TIMEOUT)
+					with _Progress(qualified, 'Checking for updates') as progress:
+						_Git.pull(path, timeout=cls._PULL_TIMEOUT)
+						progress.update('Checked for updates')
 			except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as error:
 				details = getattr(error, 'stderr', None) or str(error)
 				print(f'⚠️ {qualified}: using local version ({str(details).strip()})', file=sys.stderr)
@@ -154,9 +156,10 @@ class _Libraries:
 
 		with cls._lock:
 			if not cls.is_cloned(name):
-				print(f'almasi.{name}: Cloning library', file=sys.stderr)
-				os.makedirs(os.path.dirname(destination), exist_ok=True)
-				_Git.clone(cls.get_url(name), destination)
+				with _Progress(f'almasi.{name}', 'Cloning library') as progress:
+					os.makedirs(os.path.dirname(destination), exist_ok=True)
+					_Git.clone(cls.get_url(name), destination)
+					progress.update('Cloned library')
 
 		return destination
 
