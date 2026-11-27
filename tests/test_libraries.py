@@ -147,6 +147,39 @@ class TestLibraries(unittest.TestCase):
 				self.assertIs(almasi, sys.modules['almasi'])
 				self.assertNotIn('almasi.a', sys.modules)
 
+	# Resolve either root entry without accepting the former nested layout.
+	# ----------------------------------------------------------------------
+	def test_root_entry_selection(self):
+		with tempfile.TemporaryDirectory() as home:
+			path = os.path.join(home, 'almasi.example')
+			os.makedirs(os.path.join(path, 'almasi'))
+
+			with open(os.path.join(path, 'almasi', 'example.py'), 'w') as stream:
+				stream.write('value = 1\n')
+
+			with patch.dict(os.environ, {'ALMASI_PATH': home}), patch.dict(sys.modules):
+				with self.assertRaises(FileNotFoundError):
+					_Libraries.imp('example')
+
+				self.assertNotIn('almasi.example', sys.modules)
+
+			with open(os.path.join(path, '_example.py'), 'w') as stream:
+				stream.write('value = 2\n')
+
+			with patch.dict(os.environ, {'ALMASI_PATH': home}), patch.dict(sys.modules):
+				library = _Libraries.imp('example')
+
+				self.assertEqual(library.value, 2)
+				self.assertIs(library, sys.modules['almasi.example'])
+				self.assertIs(library, _Libraries.imp('example'))
+				self.assertEqual(library.__name__, 'almasi.example')
+
+			with open(os.path.join(path, 'example.py'), 'w') as stream:
+				stream.write('value = 3\n')
+
+			with patch.dict(os.environ, {'ALMASI_PATH': home}), patch.dict(sys.modules):
+				self.assertEqual(_Libraries.imp('example').value, 3)
+
 	# Update before a new import but never replace a loaded module.
 	# ----------------------------------------------------------------------
 	def test_git_update(self):

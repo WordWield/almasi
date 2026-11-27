@@ -127,7 +127,7 @@ class _Libraries:
 		entry = os.path.join(path, name + '.py')
 
 		if not os.path.isfile(entry):
-			entry = os.path.join(path, 'almasi', name + '.py')
+			entry = os.path.join(path, '_' + name + '.py')
 
 		return entry
 
